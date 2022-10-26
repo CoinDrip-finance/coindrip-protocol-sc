@@ -83,19 +83,32 @@ pub trait EmptyContract {
         return stream.end_time - stream.start_time;
     }
 
+    #[view(streamedSoFar)]
+    fn streamed_so_far(&self, stream_id: u64) -> BigUint {
+        let stream = self.get_stream(stream_id);
+        let delta = self.delta_of(stream_id);
+
+        let mut recipient_balance;
+        if delta == stream.end_time - stream.start_time {
+            recipient_balance = stream.remaining_balance.clone();
+        } else {
+            recipient_balance = stream.rate_per_second * BigUint::from(delta);
+
+            if stream.deposit > stream.remaining_balance {
+                let claimed_amount = stream.deposit - stream.remaining_balance.clone();
+                recipient_balance = recipient_balance - claimed_amount;
+            }
+        }
+
+        return recipient_balance;
+    }
+
     #[view(getBalanceOf)]
     fn balance_of(&self, stream_id: u64, address: ManagedAddress) -> BigUint {
         let stream = self.get_stream(stream_id);
 
-        let delta = self.delta_of(stream_id);
-
-        let mut recipient_balance = stream.rate_per_second * BigUint::from(delta);
-
-        if stream.deposit > stream.remaining_balance {
-            let claimed_amount = stream.deposit - stream.remaining_balance.clone();
-            recipient_balance = recipient_balance - claimed_amount;
-        }
-
+        let recipient_balance = self.streamed_so_far(stream_id);
+        
         if address == stream.recipient {
             return recipient_balance;
         }
@@ -120,12 +133,11 @@ pub trait EmptyContract {
         require!(caller == stream.recipient, "Only recipient can claim");
 
         let balance_of = self.balance_of(stream_id, caller.clone());
-        let amount = (_amount.into_option()).unwrap_or(balance_of);
+        let amount = (_amount.into_option()).unwrap_or(balance_of.clone());
 
         require!(amount > BigUint::zero(), "amount is zero");
 
-        let balance = self.balance_of(stream_id, caller.clone());
-        require!(balance >= amount, "amount exceeds the available balance");
+        require!(balance_of >= amount, "amount exceeds the available balance");
 
         let remaining_balance = stream.remaining_balance - amount.clone();
 
