@@ -1,21 +1,21 @@
 use elrond_wasm::types::{Address, BigUint};
 use elrond_wasm_debug::{rust_biguint, testing_framework::*, DebugApi, managed_address};
-use staking::*;
+use coindrip::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 use elrond_wasm::{
     elrond_codec::multi_types::{OptionalValue},
 };
 
-const WASM_PATH: &'static str = "output/staking.wasm";
+const WASM_PATH: &'static str = "output/coindrip.wasm";
 pub const TOKEN_ID: &[u8] = b"STRM-df6f26";
 
 struct ContractSetup<ContractObjBuilder>
 where
-    ContractObjBuilder: 'static + Copy + Fn() -> staking::ContractObj<DebugApi>,
+    ContractObjBuilder: 'static + Copy + Fn() -> coindrip::ContractObj<DebugApi>,
 {
     pub blockchain_wrapper: BlockchainStateWrapper,
     pub owner_address: Address,
-    pub contract_wrapper: ContractObjWrapper<staking::ContractObj<DebugApi>, ContractObjBuilder>,
+    pub contract_wrapper: ContractObjWrapper<coindrip::ContractObj<DebugApi>, ContractObjBuilder>,
     pub first_user_address: Address,
     pub second_user_address: Address,
     pub third_user_address: Address,
@@ -25,7 +25,7 @@ fn setup_contract<ContractObjBuilder>(
     cf_builder: ContractObjBuilder,
 ) -> ContractSetup<ContractObjBuilder>
 where
-    ContractObjBuilder: 'static + Copy + Fn() -> staking::ContractObj<DebugApi>,
+    ContractObjBuilder: 'static + Copy + Fn() -> coindrip::ContractObj<DebugApi>,
 {
     let rust_zero = rust_biguint!(0u64);
     let mut blockchain_wrapper = BlockchainStateWrapper::new();
@@ -66,7 +66,7 @@ where
 
 #[test]
 fn deploy_test() {
-    let mut setup = setup_contract(staking::contract_obj);
+    let mut setup = setup_contract(coindrip::contract_obj);
 
     // simulate deploy
     setup
@@ -96,7 +96,7 @@ fn get_current_timestamp() -> u64 {
 
 #[test]
 fn create_stream_test() {
-    let mut setup = setup_contract(staking::contract_obj);
+    let mut setup = setup_contract(coindrip::contract_obj);
     let b_wrapper = &mut setup.blockchain_wrapper;
     let current_timestamp = get_current_timestamp();
     b_wrapper.set_block_timestamp(current_timestamp);
@@ -202,7 +202,7 @@ fn create_stream_test() {
 
 #[test]
 fn claim_from_stream_test() {
-    let mut setup = setup_contract(staking::contract_obj);
+    let mut setup = setup_contract(coindrip::contract_obj);
     let b_wrapper = &mut setup.blockchain_wrapper;
     let current_timestamp = get_current_timestamp();
     b_wrapper.set_block_timestamp(current_timestamp);
@@ -323,7 +323,7 @@ fn claim_from_stream_test() {
 
 #[test]
 fn cancel_stream_test() {
-    let mut setup = setup_contract(staking::contract_obj);
+    let mut setup = setup_contract(coindrip::contract_obj);
     let b_wrapper = &mut setup.blockchain_wrapper;
     let current_timestamp = get_current_timestamp();
     b_wrapper.set_block_timestamp(current_timestamp);
@@ -379,7 +379,7 @@ fn cancel_stream_test() {
 
 #[test]
 fn streamed_so_far_test() {
-    let mut setup = setup_contract(staking::contract_obj);
+    let mut setup = setup_contract(coindrip::contract_obj);
     let b_wrapper = &mut setup.blockchain_wrapper;
     let current_timestamp = get_current_timestamp();
     b_wrapper.set_block_timestamp(current_timestamp);
@@ -441,7 +441,7 @@ fn streamed_so_far_test() {
 
 #[test]
 fn balance_of_test() {
-    let mut setup = setup_contract(staking::contract_obj);
+    let mut setup = setup_contract(coindrip::contract_obj);
     let b_wrapper = &mut setup.blockchain_wrapper;
     let current_timestamp = get_current_timestamp();
     b_wrapper.set_block_timestamp(current_timestamp);

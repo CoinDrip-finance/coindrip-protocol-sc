@@ -1,5 +1,5 @@
 [package]
-name = "staking-wasm"
+name = "coindrip-wasm"
 version = "0.0.0"
 edition = "2018"
 publish = false
@@ -20,7 +20,7 @@ lto = true
 debug = false
 panic = "abort"
 
-[dependencies.staking]
+[dependencies.coindrip]
 path = ".."
 
 [dependencies.elrond-wasm-node]

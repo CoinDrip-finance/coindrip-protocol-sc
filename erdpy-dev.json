@@ -12,7 +12,7 @@
   "contract": {
     "deploy": {
       "verbose": true,
-      "bytecode": "output/staking.wasm",
+      "bytecode": "output/coindrip.wasm",
       "recall-nonce": true,
       "ledger": true,
       "ledger-address-index": 1,
@@ -23,7 +23,7 @@
     },
     "upgrade": {
       "verbose": true,
-      "bytecode": "output/staking.wasm",
+      "bytecode": "output/coindrip.wasm",
       "recall-nonce": true,
       "pem": "wallet.pem",
       "gas-limit": 59999999,

@@ -1,3 +1,3 @@
 fn main() {
-    elrond_wasm_debug::meta::perform::<staking::AbiProvider>();
+    elrond_wasm_debug::meta::perform::<coindrip::AbiProvider>();
 }

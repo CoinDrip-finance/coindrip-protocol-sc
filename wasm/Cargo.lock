@@ -44,6 +44,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "coindrip"
+version = "0.0.0"
+dependencies = [
+ "elrond-wasm",
+]
+
+[[package]]
+name = "coindrip-wasm"
+version = "0.0.0"
+dependencies = [
+ "coindrip",
+ "elrond-wasm-node",
+ "elrond-wasm-output",
+]
+
+[[package]]
 name = "elrond-codec"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -239,22 +255,6 @@ checksum = "3d3681b28cd95acfb0560ea9441f82d6a4504fa3b15b97bd7b6e952131820e95"
 dependencies = [
  "endian-type",
  "nibble_vec",
-]
-
-[[package]]
-name = "staking"
-version = "0.0.0"
-dependencies = [
- "elrond-wasm",
-]
-
-[[package]]
-name = "staking-wasm"
-version = "0.0.0"
-dependencies = [
- "elrond-wasm-node",
- "elrond-wasm-output",
- "staking",
 ]
 
 [[package]]
