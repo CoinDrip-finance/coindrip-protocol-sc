@@ -17,7 +17,7 @@ pub struct Stream<M: ManagedTypeApi> {
 }
 
 #[elrond_wasm::contract]
-pub trait EmptyContract {
+pub trait CoinDrip {
     #[init]
     fn init(
         &self
