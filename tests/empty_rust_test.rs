@@ -294,4 +294,215 @@ fn claim_from_stream_test() {
 
           b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(3000));
 
+        // Stream is deleted
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream(1, OptionalValue::None);
+            },
+        )
+        .assert_user_error("Stream does not exist");
+
+        // Check storage updates
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                let user_deposit = sc.streams_list(managed_address!(&first_user));
+                let expected_deposit = user_deposit.len();
+                assert_eq!(expected_deposit, 0);
+            },
+        )
+        .assert_ok()
+}
+
+#[test]
+fn cancel_stream_test() {
+    let mut setup = setup_contract(staking::contract_obj);
+    let b_wrapper = &mut setup.blockchain_wrapper;
+    let current_timestamp = get_current_timestamp();
+    b_wrapper.set_block_timestamp(current_timestamp);
+    let c_wrapper = &mut setup.contract_wrapper;
+    let first_user = setup.first_user_address;
+    let second_user = setup.second_user_address;
+    let owner_address  = setup.owner_address;
+    let owner_balance = b_wrapper.get_esdt_balance(&owner_address, TOKEN_ID, 0);
+
+    // Create a valid stream of 3K tokens
+    b_wrapper
+        .execute_esdt_transfer(
+            &owner_address,
+            c_wrapper,
+            TOKEN_ID,
+            0, 
+            &rust_biguint!(3_000),
+            |sc| {
+                let current_timestamp = get_current_timestamp();
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3);
+            },
+        ).assert_ok();
+
+        // Only sender and recipient can cencel stream
+        b_wrapper
+        .execute_tx(
+            &second_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.cancel_stream(1)
+            },
+        )
+        .assert_user_error("Only recipient or sender can cancel stream");
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 2);
+
+        // Cancel stream in the middle
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.cancel_stream(1)
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(1500));
+        b_wrapper.check_esdt_balance(&owner_address, TOKEN_ID, &(owner_balance - rust_biguint!(1500)));
+}
+
+#[test]
+fn streamed_so_far_test() {
+    let mut setup = setup_contract(staking::contract_obj);
+    let b_wrapper = &mut setup.blockchain_wrapper;
+    let current_timestamp = get_current_timestamp();
+    b_wrapper.set_block_timestamp(current_timestamp);
+    let c_wrapper = &mut setup.contract_wrapper;
+    let first_user = setup.first_user_address;
+    let owner_address  = setup.owner_address;
+
+    // Create a valid stream of 3K tokens
+    b_wrapper
+        .execute_esdt_transfer(
+            &owner_address,
+            c_wrapper,
+            TOKEN_ID,
+            0, 
+            &rust_biguint!(3_000),
+            |sc| {
+                let current_timestamp = get_current_timestamp();
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3);
+            },
+        ).assert_ok();
+
+        // Streamed before start 
+        b_wrapper
+        .execute_query(
+            c_wrapper,
+            |sc| {
+                let streamed_so_far = sc.streamed_so_far(1);
+                assert_eq!(streamed_so_far, BigUint::zero());
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 2);
+
+        // Streamed at half of the period
+        b_wrapper
+        .execute_query(
+            c_wrapper,
+            |sc| {
+                let streamed_so_far = sc.streamed_so_far(1);
+                assert_eq!(streamed_so_far, BigUint::from(1500u64));
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 6);
+
+        // Streamed after end time
+        b_wrapper
+        .execute_query(
+            c_wrapper,
+            |sc| {
+                let streamed_so_far = sc.streamed_so_far(1);
+                assert_eq!(streamed_so_far, BigUint::from(3000u64));
+            },
+        )
+        .assert_ok();
+}
+
+#[test]
+fn balance_of_test() {
+    let mut setup = setup_contract(staking::contract_obj);
+    let b_wrapper = &mut setup.blockchain_wrapper;
+    let current_timestamp = get_current_timestamp();
+    b_wrapper.set_block_timestamp(current_timestamp);
+    let c_wrapper = &mut setup.contract_wrapper;
+    let first_user = setup.first_user_address;
+    let owner_address  = setup.owner_address;
+
+    // Create a valid stream of 3K tokens
+    b_wrapper
+        .execute_esdt_transfer(
+            &owner_address,
+            c_wrapper,
+            TOKEN_ID,
+            0, 
+            &rust_biguint!(3_000),
+            |sc| {
+                let current_timestamp = get_current_timestamp();
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3);
+            },
+        ).assert_ok();
+
+        // Balance before start 
+        b_wrapper
+        .execute_query(
+            c_wrapper,
+            |sc| {
+                let balance_of_sender = sc.balance_of(1, managed_address!(&owner_address));
+                let balance_of_recipient = sc.balance_of(1, managed_address!(&first_user));
+                assert_eq!(balance_of_sender, BigUint::from(3000u64));
+                assert_eq!(balance_of_recipient, BigUint::zero());
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 2);
+
+        // Balance at half of the period
+        b_wrapper
+        .execute_query(
+            c_wrapper,
+            |sc| {
+                let balance_of_sender = sc.balance_of(1, managed_address!(&owner_address));
+                let balance_of_recipient = sc.balance_of(1, managed_address!(&first_user));
+                assert_eq!(balance_of_sender, BigUint::from(1500u64));
+                assert_eq!(balance_of_recipient, BigUint::from(1500u64));
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 6);
+
+        // Balance after end time
+        b_wrapper
+        .execute_query(
+            c_wrapper,
+            |sc| {
+                let balance_of_sender = sc.balance_of(1, managed_address!(&owner_address));
+                let balance_of_recipient = sc.balance_of(1, managed_address!(&first_user));
+                assert_eq!(balance_of_sender, BigUint::zero());
+                assert_eq!(balance_of_recipient, BigUint::from(3000u64));
+            },
+        )
+        .assert_ok();
 }
