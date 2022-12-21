@@ -1,0 +1,71 @@
+curl --request GET \
+  --url https://devnet-index.elrond.com/logs/_search \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "query": {
+        "nested": {
+          "path": "events",
+          "query": {
+            "bool": {
+              "must": [
+                {"match": {
+                  "events.identifier": "claimFromStream"
+                }
+                }
+              ]
+            }
+          }
+        }
+      },
+    "sort": [
+        {
+            "timestamp": {
+                "order": "desc"
+            }
+        }
+    ]
+}'
+
+----
+
+curl --request GET \
+  --url https://devnet-index.elrond.com/logs/_search \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                     "match": {
+                        "address": {
+                            "query": "erd1qqqqqqqqqqqqqpgqlrveeg222qgjgk60h7waf8md2fehtv7dlpzq9knlxq",
+                            "operator": "AND"
+                        }
+                     }
+                },
+                {
+                    "nested": {
+                        "path": "events",
+                        "query": {
+                          "bool": {
+                            "must": [
+                              {"match": {
+                                "events.identifier": "claimFromStream"
+                              }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                }
+            ]
+        }
+    },
+    "sort": [
+        {
+            "timestamp": {
+                "order": "desc"
+            }
+        }
+    ]
+}'

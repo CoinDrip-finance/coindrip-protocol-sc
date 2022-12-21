@@ -2,22 +2,14 @@
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
-#[derive(TopEncode, TopDecode, NestedEncode, TypeAbi)]
-pub struct Stream<M: ManagedTypeApi> {
-    pub sender: ManagedAddress<M>,
-    pub recipient: ManagedAddress<M>,
-    pub payment_token: EgldOrEsdtTokenIdentifier<M>,
-    pub payment_nonce: u64,
-    pub deposit: BigUint<M>,
-    pub remaining_balance: BigUint<M>,
-    pub rate_per_second: BigUint<M>,
 
-    pub start_time: u64,
-    pub end_time: u64
-}
-
+pub mod storage;
+mod events;
+use storage::Stream;
 #[elrond_wasm::contract]
-pub trait CoinDrip {
+pub trait CoinDrip: 
+    storage::StorageModule
+    + events::EventsModule {
     #[init]
     fn init(
         &self
@@ -56,7 +48,7 @@ pub trait CoinDrip {
         let stream = Stream {
             sender: caller.clone(),
             recipient: recipient.clone(),
-            payment_token: token_identifier,
+            payment_token: token_identifier.clone(),
             payment_nonce: token_nonce,
             deposit: token_amount.clone(),
             remaining_balance: token_amount.clone(),
@@ -66,8 +58,10 @@ pub trait CoinDrip {
         };
         self.stream_by_id(stream_id).set(&stream);
 
-        self.streams_list(caller).insert(stream_id);
-        self.streams_list(recipient).insert(stream_id);
+        self.streams_list(caller.clone()).insert(stream_id);
+        self.streams_list(recipient.clone()).insert(stream_id);
+
+        self.create_stream_event(stream_id, &caller, &recipient, &token_identifier, token_nonce, &token_amount, start_time, end_time);
     }
 
     fn delta_of(&self, stream_id: u64) -> u64 {
@@ -89,15 +83,22 @@ pub trait CoinDrip {
         let delta = self.delta_of(stream_id);
 
         let mut recipient_balance;
-        if delta == stream.end_time - stream.start_time {
-            recipient_balance = stream.remaining_balance.clone();
-        } else {
-            recipient_balance = stream.rate_per_second * BigUint::from(delta);
+        // if delta == stream.end_time - stream.start_time {
+        //     recipient_balance = stream.remaining_balance.clone();
+        // } else {
+        //     recipient_balance = stream.rate_per_second * BigUint::from(delta);
 
-            if stream.deposit > stream.remaining_balance {
-                let claimed_amount = stream.deposit - stream.remaining_balance.clone();
-                recipient_balance = recipient_balance - claimed_amount;
-            }
+        //     if stream.deposit > stream.remaining_balance {
+        //         let claimed_amount = stream.deposit - stream.remaining_balance.clone();
+        //         recipient_balance = recipient_balance - claimed_amount;
+        //     }
+        // }
+        // TODO: Check if stream comparison with zero is fixed
+        recipient_balance = stream.rate_per_second * BigUint::from(delta);
+
+        if stream.deposit > stream.remaining_balance {
+            let claimed_amount = stream.deposit - stream.remaining_balance.clone();
+            recipient_balance = recipient_balance - claimed_amount;
         }
 
         return recipient_balance;
@@ -149,6 +150,8 @@ pub trait CoinDrip {
         }
 
         self.send().direct(&caller, &stream.payment_token, stream.payment_nonce, &amount);
+
+        self.claim_from_stream_event(stream_id, &amount);
     }
 
     #[endpoint(cancelStream)]
@@ -173,6 +176,8 @@ pub trait CoinDrip {
         if recipient_balance > BigUint::zero() {
             self.send().direct(&stream.recipient, &stream.payment_token, stream.payment_nonce, &recipient_balance);
         }
+
+        self.cancel_stream_event(stream_id);
     }
 
     fn remove_stream(&self, stream_id: u64) {
@@ -210,15 +215,4 @@ pub trait CoinDrip {
 
         return result;
     }
-
-    #[storage_mapper("streamById")]
-    fn stream_by_id(&self, stream_id: u64) -> SingleValueMapper<Stream<Self::Api>>;
-
-    #[view(getStreamListByAddress)]
-    #[storage_mapper("streamsList")]
-    fn streams_list(&self, address: ManagedAddress) -> UnorderedSetMapper<u64>;
-
-    #[view(getLastStreamId)]
-    #[storage_mapper("lastStreamId")]
-    fn last_stream_id(&self) -> SingleValueMapper<u64>;
 }
