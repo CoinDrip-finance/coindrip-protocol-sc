@@ -10,7 +10,7 @@ pub struct Stream<M: ManagedTypeApi> {
     pub deposit: BigUint<M>,
     pub remaining_balance: BigUint<M>,
     pub rate_per_second: BigUint<M>,
-
+    pub can_cancel: bool,
     pub start_time: u64,
     pub end_time: u64
 }

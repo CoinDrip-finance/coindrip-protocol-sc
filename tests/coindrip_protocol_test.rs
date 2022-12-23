@@ -54,7 +54,7 @@ fn create_stream_test() {
             &rust_biguint!(3_000),
             |sc| {
                 let current_timestamp = get_current_timestamp();
-                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 60);
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 60, OptionalValue::None);
 
                 let user_deposit = sc.streams_list(managed_address!(&first_user));
                 let expected_deposit = user_deposit.len();
@@ -73,7 +73,7 @@ fn create_stream_test() {
         &rust_biguint!(0),
         |sc| {
             let current_timestamp = get_current_timestamp();
-             sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 60);
+             sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 60, OptionalValue::None);
         },
     )
     .assert_user_error("deposit is zero");
@@ -88,7 +88,7 @@ fn create_stream_test() {
         &rust_biguint!(3_000),
         |sc| {
             let current_timestamp = get_current_timestamp();
-            sc.create_stream(managed_address!(c_wrapper.address_ref()), current_timestamp + 60, current_timestamp + 60 * 60);
+            sc.create_stream(managed_address!(c_wrapper.address_ref()), current_timestamp + 60, current_timestamp + 60 * 60, OptionalValue::None);
         },
     )
     .assert_user_error("stream to the current smart contract");
@@ -103,7 +103,7 @@ fn create_stream_test() {
         &rust_biguint!(3_000),
         |sc| {
             let current_timestamp = get_current_timestamp();
-            sc.create_stream(managed_address!(&owner_address), current_timestamp + 60, current_timestamp + 60 * 60);
+            sc.create_stream(managed_address!(&owner_address), current_timestamp + 60, current_timestamp + 60 * 60, OptionalValue::None);
         },
     )
     .assert_user_error("stream to the caller");
@@ -118,7 +118,7 @@ fn create_stream_test() {
         &rust_biguint!(3_000),
         |sc| {
             let current_timestamp = get_current_timestamp();
-            sc.create_stream(managed_address!(&first_user), current_timestamp - 60, current_timestamp + 60 * 60);
+            sc.create_stream(managed_address!(&first_user), current_timestamp - 60, current_timestamp + 60 * 60, OptionalValue::None);
         },
     )
     .assert_user_error("start time before current time");
@@ -133,7 +133,7 @@ fn create_stream_test() {
          &rust_biguint!(3_000),
          |sc| {
              let current_timestamp = get_current_timestamp();
-             sc.create_stream(managed_address!(&first_user), current_timestamp + 60 * 60, current_timestamp + 60);
+             sc.create_stream(managed_address!(&first_user), current_timestamp + 60 * 60, current_timestamp + 60, OptionalValue::None);
          },
      )
      .assert_user_error("end time before the start time");
@@ -160,7 +160,7 @@ fn claim_from_stream_test() {
             &rust_biguint!(3_000),
             |sc| {
                 let current_timestamp = get_current_timestamp();
-                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3);
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3, OptionalValue::None);
             },
         ).assert_ok();
         
@@ -282,7 +282,7 @@ fn cancel_stream_test() {
             &rust_biguint!(3_000),
             |sc| {
                 let current_timestamp = get_current_timestamp();
-                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3);
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3, OptionalValue::None);
             },
         ).assert_ok();
 
@@ -314,6 +314,32 @@ fn cancel_stream_test() {
 
         b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(1500));
         b_wrapper.check_esdt_balance(&owner_address, TOKEN_ID, &(owner_balance - rust_biguint!(1500)));
+
+        b_wrapper.set_block_timestamp(current_timestamp);
+
+        b_wrapper
+        .execute_esdt_transfer(
+            &owner_address,
+            c_wrapper,
+            TOKEN_ID,
+            0, 
+            &rust_biguint!(3_000),
+            |sc| {
+                let current_timestamp = get_current_timestamp();
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3, OptionalValue::Some(false));
+            },
+        ).assert_ok();
+
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.cancel_stream(2)
+            },
+        )
+        .assert_user_error("This stream can't be canceled");
 }
 
 #[test]
@@ -336,7 +362,7 @@ fn streamed_so_far_test() {
             &rust_biguint!(3_000),
             |sc| {
                 let current_timestamp = get_current_timestamp();
-                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3);
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3, OptionalValue::None);
             },
         ).assert_ok();
 
@@ -398,7 +424,7 @@ fn balance_of_test() {
             &rust_biguint!(3_000),
             |sc| {
                 let current_timestamp = get_current_timestamp();
-                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3);
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3, OptionalValue::None);
             },
         ).assert_ok();
 

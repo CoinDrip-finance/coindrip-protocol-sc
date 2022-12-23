@@ -22,7 +22,8 @@ pub trait CoinDrip:
         &self,
         recipient: ManagedAddress,
         start_time: u64,
-        end_time: u64
+        end_time: u64,
+        _can_cancel: OptionalValue<bool>
     ) {
         require!(recipient != self.blockchain().get_sc_address(), "stream to the current smart contract");
         require!(recipient != self.blockchain().get_caller(), "stream to the caller");
@@ -44,6 +45,7 @@ pub trait CoinDrip:
         let rate_per_second = token_amount.clone() / BigUint::from(duration);
 
         let caller = self.blockchain().get_caller();
+        let can_cancel: bool = (&_can_cancel.into_option()).unwrap_or(true);
 
         let stream = Stream {
             sender: caller.clone(),
@@ -53,6 +55,7 @@ pub trait CoinDrip:
             deposit: token_amount.clone(),
             remaining_balance: token_amount.clone(),
             rate_per_second,
+            can_cancel,
             start_time,
             end_time
         };
@@ -160,6 +163,8 @@ pub trait CoinDrip:
         stream_id: u64
     ) {
         let stream = self.get_stream(stream_id);
+
+        require!(stream.can_cancel == true, "This stream can't be canceled");
 
         let caller = self.blockchain().get_caller();
         require!(caller == stream.recipient || caller == stream.sender, "Only recipient or sender can cancel stream");
