@@ -23,9 +23,16 @@ pub trait EventsModule {
         #[indexed] amount: &BigUint,
     );
 
+    #[event("claimFinalized")]
+    fn claim_finalized_event(
+        &self,
+        #[indexed] stream_id: u64,
+    );
+
     #[event("cancelStream")]
     fn cancel_stream_event(
         &self,
         #[indexed] stream_id: u64,
+        #[indexed] canceled_by: &ManagedAddress,
     );
 }  

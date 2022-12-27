@@ -165,13 +165,16 @@ pub trait CoinDrip:
         if remaining_balance == BigUint::zero() {
             self.remove_stream(stream_id);
         } else {
-            stream.remaining_balance = remaining_balance;
+            stream.remaining_balance = remaining_balance.clone();
             self.stream_by_id(stream_id).set(&stream);
         }
 
         self.send().direct(&caller, &stream.payment_token, stream.payment_nonce, &amount);
 
         self.claim_from_stream_event(stream_id, &amount);
+        if remaining_balance == BigUint::zero() {
+            self.claim_finalized_event(stream_id);
+        }
     }
 
     #[endpoint(cancelStream)]
@@ -199,7 +202,7 @@ pub trait CoinDrip:
             self.send().direct(&stream.recipient, &stream.payment_token, stream.payment_nonce, &recipient_balance);
         }
 
-        self.cancel_stream_event(stream_id);
+        self.cancel_stream_event(stream_id, &caller);
     }
 
     fn remove_stream(&self, stream_id: u64) {
