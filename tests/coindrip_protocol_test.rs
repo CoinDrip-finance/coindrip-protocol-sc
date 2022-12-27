@@ -1,4 +1,4 @@
-use coindrip::{CoinDrip, storage::StorageModule};
+use coindrip::{CoinDrip, storage::StorageModule, errors::{ERR_ZERO_DEPOSIT, ERR_STREAM_TO_SC, ERR_STREAM_TO_CALLER, ERR_START_TIME, ERR_END_TIME, ERR_ONLY_RECIPIENT_CLAIM, ERR_ZERO_CLAIM, ERR_CLAIM_TOO_BIG, ERR_INVALID_STREAM, ERR_CANCEL_ONLY_OWNERS, ERR_CANT_CANCEL}};
 use elrond_wasm::types::{BigUint};
 use elrond_wasm_debug::{rust_biguint, managed_address};
 use elrond_wasm::{
@@ -76,7 +76,7 @@ fn create_stream_test() {
              sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 60, OptionalValue::None);
         },
     )
-    .assert_user_error("deposit is zero");
+    .assert_user_error(ERR_ZERO_DEPOSIT);
 
     // Stream towards the SC
     b_wrapper
@@ -91,7 +91,7 @@ fn create_stream_test() {
             sc.create_stream(managed_address!(c_wrapper.address_ref()), current_timestamp + 60, current_timestamp + 60 * 60, OptionalValue::None);
         },
     )
-    .assert_user_error("stream to the current smart contract");
+    .assert_user_error(ERR_STREAM_TO_SC);
 
     // Stream towards the caller
     b_wrapper
@@ -106,7 +106,7 @@ fn create_stream_test() {
             sc.create_stream(managed_address!(&owner_address), current_timestamp + 60, current_timestamp + 60 * 60, OptionalValue::None);
         },
     )
-    .assert_user_error("stream to the caller");
+    .assert_user_error(ERR_STREAM_TO_CALLER);
 
     // Start time before current time
     b_wrapper
@@ -121,7 +121,7 @@ fn create_stream_test() {
             sc.create_stream(managed_address!(&first_user), current_timestamp - 60, current_timestamp + 60 * 60, OptionalValue::None);
         },
     )
-    .assert_user_error("start time before current time");
+    .assert_user_error(ERR_START_TIME);
 
      // End time before start time
      b_wrapper
@@ -136,7 +136,7 @@ fn create_stream_test() {
              sc.create_stream(managed_address!(&first_user), current_timestamp + 60 * 60, current_timestamp + 60, OptionalValue::None);
          },
      )
-     .assert_user_error("end time before the start time");
+     .assert_user_error(ERR_END_TIME);
 }
 
 #[test]
@@ -175,7 +175,7 @@ fn claim_from_stream_test() {
                 sc.claim_from_stream(1, OptionalValue::None);
             },
         )
-        .assert_user_error("Only recipient can claim");
+        .assert_user_error(ERR_ONLY_RECIPIENT_CLAIM);
 
           // Amount to claim is zero
           b_wrapper
@@ -187,7 +187,7 @@ fn claim_from_stream_test() {
                   sc.claim_from_stream(1, OptionalValue::None);
               },
           )
-          .assert_user_error("amount is zero");
+          .assert_user_error(ERR_ZERO_CLAIM);
 
           // Amount is bigger than streamed amount
           b_wrapper
@@ -199,7 +199,7 @@ fn claim_from_stream_test() {
                   sc.claim_from_stream(1, OptionalValue::Some(BigUint::from(100u64)));
               },
           )
-          .assert_user_error("amount exceeds the available balance");
+          .assert_user_error(ERR_CLAIM_TOO_BIG);
 
           b_wrapper.set_block_timestamp(current_timestamp + 60 * 2);
 
@@ -243,7 +243,7 @@ fn claim_from_stream_test() {
                 sc.claim_from_stream(1, OptionalValue::None);
             },
         )
-        .assert_user_error("Stream does not exist");
+        .assert_user_error(ERR_INVALID_STREAM);
 
         // Check storage updates
         b_wrapper
@@ -296,7 +296,7 @@ fn cancel_stream_test() {
                 sc.cancel_stream(1)
             },
         )
-        .assert_user_error("Only recipient or sender can cancel stream");
+        .assert_user_error(ERR_CANCEL_ONLY_OWNERS);
 
         b_wrapper.set_block_timestamp(current_timestamp + 60 * 2);
 
@@ -339,7 +339,7 @@ fn cancel_stream_test() {
                 sc.cancel_stream(2)
             },
         )
-        .assert_user_error("This stream can't be canceled");
+        .assert_user_error(ERR_CANT_CANCEL);
 }
 
 #[test]

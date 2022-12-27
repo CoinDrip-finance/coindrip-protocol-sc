@@ -5,7 +5,13 @@ elrond_wasm::derive_imports!();
 
 pub mod storage;
 mod events;
+pub mod errors;
 use storage::Stream;
+
+use crate::errors::{
+    ERR_STREAM_TO_SC,
+    ERR_STREAM_TO_CALLER, ERR_STREAM_ONLY_FUNGIBLE, ERR_ZERO_DEPOSIT, ERR_START_TIME, ERR_END_TIME, ERR_ONLY_RECIPIENT_CLAIM, ERR_ZERO_CLAIM, ERR_CLAIM_TOO_BIG, ERR_CANT_CANCEL, ERR_CANCEL_ONLY_OWNERS, ERR_INVALID_STREAM, ERR_NO_STREAM
+};
 #[elrond_wasm::contract]
 pub trait CoinDrip: 
     storage::StorageModule
@@ -25,18 +31,18 @@ pub trait CoinDrip:
         end_time: u64,
         _can_cancel: OptionalValue<bool>
     ) {
-        require!(recipient != self.blockchain().get_sc_address(), "stream to the current smart contract");
-        require!(recipient != self.blockchain().get_caller(), "stream to the caller");
+        require!(recipient != self.blockchain().get_sc_address(), ERR_STREAM_TO_SC);
+        require!(recipient != self.blockchain().get_caller(), ERR_STREAM_TO_CALLER);
 
         let (token_identifier, token_nonce, token_amount) = self.call_value().egld_or_single_esdt().into_tuple();
 
-        require!(token_nonce == 0, "you can only stream fungible tokens");
+        require!(token_nonce == 0, ERR_STREAM_ONLY_FUNGIBLE);
 
-        require!(token_amount > BigUint::zero(), "deposit is zero");
+        require!(token_amount > BigUint::zero(), ERR_ZERO_DEPOSIT);
 
         let current_time = self.blockchain().get_block_timestamp();
-        require!(start_time >= current_time, "start time before current time");
-        require!(end_time > start_time, "end time before the start time");
+        require!(start_time >= current_time, ERR_START_TIME);
+        require!(end_time > start_time, ERR_END_TIME);
 
         let stream_id = self.last_stream_id().get() + 1;
         self.last_stream_id().set(&stream_id);
@@ -134,14 +140,14 @@ pub trait CoinDrip:
         let mut stream = self.get_stream(stream_id);
 
         let caller = self.blockchain().get_caller();
-        require!(caller == stream.recipient, "Only recipient can claim");
+        require!(caller == stream.recipient, ERR_ONLY_RECIPIENT_CLAIM);
 
         let balance_of = self.balance_of(stream_id, caller.clone());
         let amount = (_amount.into_option()).unwrap_or(balance_of.clone());
 
-        require!(amount > BigUint::zero(), "amount is zero");
+        require!(amount > BigUint::zero(), ERR_ZERO_CLAIM);
 
-        require!(balance_of >= amount, "amount exceeds the available balance");
+        require!(balance_of >= amount, ERR_CLAIM_TOO_BIG);
 
         let remaining_balance = stream.remaining_balance - amount.clone();
 
@@ -164,10 +170,10 @@ pub trait CoinDrip:
     ) {
         let stream = self.get_stream(stream_id);
 
-        require!(stream.can_cancel == true, "This stream can't be canceled");
+        require!(stream.can_cancel == true, ERR_CANT_CANCEL);
 
         let caller = self.blockchain().get_caller();
-        require!(caller == stream.recipient || caller == stream.sender, "Only recipient or sender can cancel stream");
+        require!(caller == stream.recipient || caller == stream.sender, ERR_CANCEL_ONLY_OWNERS);
 
         let sender_balance = self.balance_of(stream_id, stream.sender.clone());
         let recipient_balance = self.balance_of(stream_id, stream.recipient.clone());
@@ -196,7 +202,7 @@ pub trait CoinDrip:
     #[view(getStreamData)]
     fn get_stream(&self, stream_id: u64) -> Stream<Self::Api> {
         let stream_mapper = self.stream_by_id(stream_id);
-        require!(!stream_mapper.is_empty(), "Stream does not exist");
+        require!(!stream_mapper.is_empty(), ERR_INVALID_STREAM);
         stream_mapper.get()
     }
     
@@ -206,8 +212,8 @@ pub trait CoinDrip:
         page: usize,
         _page_size: OptionalValue<usize>) -> MultiValueEncoded<MultiValue2<u64, Stream<Self::Api>>> {
         let streams_list_by_address = self.streams_list(address);
-        require!(!streams_list_by_address.is_empty(), "Address have no streams");
-        require!(streams_list_by_address.len() > 0, "Address have no streams");
+        require!(!streams_list_by_address.is_empty(), ERR_NO_STREAM);
+        require!(streams_list_by_address.len() > 0, ERR_NO_STREAM);
         let page_size: usize = (&_page_size.into_option()).unwrap_or(100);
         let mut streams_list_by_address_iter = streams_list_by_address.iter().skip(page * page_size).take(page_size);
 
