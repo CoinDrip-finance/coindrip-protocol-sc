@@ -8,7 +8,7 @@ pub struct Stream<M: ManagedTypeApi> {
     pub payment_token: EgldOrEsdtTokenIdentifier<M>,
     pub payment_nonce: u64,
     pub deposit: BigUint<M>,
-    pub remaining_balance: BigUint<M>,
+    pub last_claim: u64,
     pub rate_per_second: BigUint<M>,
     pub can_cancel: bool,
     pub start_time: u64,

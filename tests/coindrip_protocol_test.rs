@@ -371,7 +371,7 @@ fn streamed_so_far_test() {
         .execute_query(
             c_wrapper,
             |sc| {
-                let streamed_so_far = sc.streamed_so_far(1);
+                let streamed_so_far = sc.recipient_balance(1);
                 assert_eq!(streamed_so_far, BigUint::zero());
             },
         )
@@ -384,7 +384,7 @@ fn streamed_so_far_test() {
         .execute_query(
             c_wrapper,
             |sc| {
-                let streamed_so_far = sc.streamed_so_far(1);
+                let streamed_so_far = sc.recipient_balance(1);
                 assert_eq!(streamed_so_far, BigUint::from(1500u64));
             },
         )
@@ -397,7 +397,7 @@ fn streamed_so_far_test() {
         .execute_query(
             c_wrapper,
             |sc| {
-                let streamed_so_far = sc.streamed_so_far(1);
+                let streamed_so_far = sc.recipient_balance(1);
                 assert_eq!(streamed_so_far, BigUint::from(3000u64));
             },
         )
