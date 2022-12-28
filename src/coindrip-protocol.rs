@@ -221,24 +221,24 @@ pub trait CoinDrip:
         stream_mapper.get()
     }
 
-    #[view(getStreamListWithDetails)]
-    fn get_stream_list_with_details(&self,
-        address: ManagedAddress,
-        page: usize,
-        _page_size: OptionalValue<usize>) -> MultiValueEncoded<MultiValue2<u64, Stream<Self::Api>>> {
-        let streams_list_by_address = self.streams_list(address);
-        require!(!streams_list_by_address.is_empty(), ERR_NO_STREAM);
-        require!(streams_list_by_address.len() > 0, ERR_NO_STREAM);
-        let page_size: usize = (&_page_size.into_option()).unwrap_or(100);
-        let mut streams_list_by_address_iter = streams_list_by_address.iter().skip(page * page_size).take(page_size);
+    // #[view(getStreamListWithDetails)]
+    // fn get_stream_list_with_details(&self,
+    //     address: ManagedAddress,
+    //     page: usize,
+    //     _page_size: OptionalValue<usize>) -> MultiValueEncoded<MultiValue2<u64, Stream<Self::Api>>> {
+    //     let streams_list_by_address = self.streams_list(address);
+    //     require!(!streams_list_by_address.is_empty(), ERR_NO_STREAM);
+    //     require!(streams_list_by_address.len() > 0, ERR_NO_STREAM);
+    //     let page_size: usize = (&_page_size.into_option()).unwrap_or(100);
+    //     let mut streams_list_by_address_iter = streams_list_by_address.iter().skip(page * page_size).take(page_size);
 
-        let mut result = MultiValueEncoded::new();
+    //     let mut result = MultiValueEncoded::new();
 
-        while let Some(stream_id) = streams_list_by_address_iter.next() {
-            let stream = self.get_stream(stream_id);
-            result.push(MultiValue2::from((stream_id, stream)));
-        }
+    //     while let Some(stream_id) = streams_list_by_address_iter.next() {
+    //         let stream = self.get_stream(stream_id);
+    //         result.push(MultiValue2::from((stream_id, stream)));
+    //     }
 
-        result
-    }
+    //     result
+    // }
 }

@@ -5,9 +5,9 @@
 ////////////////////////////////////////////////////
 
 // Init:                                 1
-// Endpoints:                            9
+// Endpoints:                            7
 // Async Callback (empty):               1
-// Total number of exported functions:  11
+// Total number of exported functions:   9
 
 #![no_std]
 
@@ -15,12 +15,10 @@ elrond_wasm_node::wasm_endpoints! {
     coindrip
     (
         createStream
-        streamedSoFar
         getBalanceOf
         claimFromStream
         cancelStream
         getStreamData
-        getStreamListWithDetails
         getStreamListByAddress
         getLastStreamId
     )
