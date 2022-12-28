@@ -10,21 +10,21 @@ use storage::Stream;
 
 use errors::{
     ERR_STREAM_TO_SC,
-    ERR_STREAM_TO_CALLER, 
-    ERR_STREAM_ONLY_FUNGIBLE, 
-    ERR_ZERO_DEPOSIT, 
-    ERR_START_TIME, 
-    ERR_END_TIME, 
+    ERR_STREAM_TO_CALLER,
+    ERR_STREAM_ONLY_FUNGIBLE,
+    ERR_ZERO_DEPOSIT,
+    ERR_START_TIME,
+    ERR_END_TIME,
     ERR_ONLY_RECIPIENT_CLAIM,
     ERR_ZERO_CLAIM,
-    ERR_CLAIM_TOO_BIG, 
-    ERR_CANT_CANCEL, 
-    ERR_CANCEL_ONLY_OWNERS, 
-    ERR_INVALID_STREAM, 
+    ERR_CLAIM_TOO_BIG,
+    ERR_CANT_CANCEL,
+    ERR_CANCEL_ONLY_OWNERS,
+    ERR_INVALID_STREAM,
     ERR_NO_STREAM
 };
 #[elrond_wasm::contract]
-pub trait CoinDrip: 
+pub trait CoinDrip:
     storage::StorageModule
     + events::EventsModule {
     #[init]
@@ -49,7 +49,7 @@ pub trait CoinDrip:
 
         require!(token_nonce == 0, ERR_STREAM_ONLY_FUNGIBLE);
 
-        require!(token_amount > BigUint::zero(), ERR_ZERO_DEPOSIT);
+        require!(token_amount > 0, ERR_ZERO_DEPOSIT);
 
         let current_time = self.blockchain().get_block_timestamp();
         require!(start_time >= current_time, ERR_START_TIME);
@@ -94,7 +94,7 @@ pub trait CoinDrip:
             return current_time - stream.start_time;
         }
 
-        return stream.end_time - stream.start_time;
+        stream.end_time - stream.start_time
     }
 
     #[view(streamedSoFar)]
@@ -121,7 +121,7 @@ pub trait CoinDrip:
             recipient_balance = recipient_balance - claimed_amount;
         }
 
-        return recipient_balance;
+        recipient_balance
     }
 
     #[view(getBalanceOf)]
@@ -129,7 +129,7 @@ pub trait CoinDrip:
         let stream = self.get_stream(stream_id);
 
         let recipient_balance = self.streamed_so_far(stream_id);
-        
+
         if address == stream.recipient {
             return recipient_balance;
         }
@@ -139,7 +139,7 @@ pub trait CoinDrip:
             return sender_balance;
         }
 
-        return BigUint::zero();
+        BigUint::zero()
     }
 
     #[endpoint(claimFromStream)]
@@ -156,13 +156,14 @@ pub trait CoinDrip:
         let balance_of = self.balance_of(stream_id, caller.clone());
         let amount = (_amount.into_option()).unwrap_or(balance_of.clone());
 
-        require!(amount > BigUint::zero(), ERR_ZERO_CLAIM);
+        require!(amount > 0, ERR_ZERO_CLAIM);
 
         require!(balance_of >= amount, ERR_CLAIM_TOO_BIG);
 
         let remaining_balance = stream.remaining_balance - amount.clone();
+        let is_finalized = remaining_balance == 0;
 
-        if remaining_balance == BigUint::zero() {
+        if is_finalized {
             self.remove_stream(stream_id);
         } else {
             stream.remaining_balance = remaining_balance.clone();
@@ -171,10 +172,7 @@ pub trait CoinDrip:
 
         self.send().direct(&caller, &stream.payment_token, stream.payment_nonce, &amount);
 
-        self.claim_from_stream_event(stream_id, &amount);
-        if remaining_balance == BigUint::zero() {
-            self.claim_finalized_event(stream_id);
-        }
+        self.claim_from_stream_event(stream_id, &amount, is_finalized);
     }
 
     #[endpoint(cancelStream)]
@@ -184,7 +182,7 @@ pub trait CoinDrip:
     ) {
         let stream = self.get_stream(stream_id);
 
-        require!(stream.can_cancel == true, ERR_CANT_CANCEL);
+        require!(stream.can_cancel, ERR_CANT_CANCEL);
 
         let caller = self.blockchain().get_caller();
         require!(caller == stream.recipient || caller == stream.sender, ERR_CANCEL_ONLY_OWNERS);
@@ -194,11 +192,11 @@ pub trait CoinDrip:
 
         self.remove_stream(stream_id);
 
-        if sender_balance > BigUint::zero() {
+        if sender_balance > 0 {
             self.send().direct(&stream.sender, &stream.payment_token, stream.payment_nonce, &sender_balance);
         }
 
-        if recipient_balance > BigUint::zero() {
+        if recipient_balance > 0 {
             self.send().direct(&stream.recipient, &stream.payment_token, stream.payment_nonce, &recipient_balance);
         }
 
@@ -219,9 +217,9 @@ pub trait CoinDrip:
         require!(!stream_mapper.is_empty(), ERR_INVALID_STREAM);
         stream_mapper.get()
     }
-    
+
     #[view(getStreamListWithDetails)]
-    fn get_stream_list_with_details(&self, 
+    fn get_stream_list_with_details(&self,
         address: ManagedAddress,
         page: usize,
         _page_size: OptionalValue<usize>) -> MultiValueEncoded<MultiValue2<u64, Stream<Self::Api>>> {
@@ -238,6 +236,6 @@ pub trait CoinDrip:
             result.push(MultiValue2::from((stream_id, stream)));
         }
 
-        return result;
+        result
     }
 }
