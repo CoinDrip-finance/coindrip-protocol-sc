@@ -70,6 +70,7 @@ pub trait CoinDrip:
             payment_token: token_identifier.clone(),
             payment_nonce: token_nonce,
             deposit: token_amount.clone(),
+            remaining_balance: token_amount.clone(),
             last_claim: start_time,
             rate_per_second,
             can_cancel,
@@ -133,16 +134,39 @@ pub trait CoinDrip:
         let stream = self.get_stream(stream_id);
 
         if address == stream.recipient {
-            let recipient_balance = self.recipient_balance(stream_id);
-            return recipient_balance;
+            if self.is_stream_finalized(stream_id) {
+                return stream.remaining_balance;
+            } else {
+                let recipient_balance = self.recipient_balance(stream_id);
+                return recipient_balance;
+            }
+            
         }
 
         if address == stream.sender {
-            let sender_balance = self.sender_balance(stream_id);
-            return sender_balance;
+            if self.is_stream_not_started(stream_id) {
+                return stream.deposit;
+            } else {
+                let sender_balance = self.sender_balance(stream_id);
+                return sender_balance;
+            }
         }
 
         BigUint::zero()
+    }
+
+    fn is_stream_finalized(&self, stream_id: u64) -> bool {
+        let stream = self.get_stream(stream_id);
+        let current_time = self.blockchain().get_block_timestamp();
+        let is_finalized = current_time >= stream.end_time;
+        return is_finalized;
+    }
+
+    fn is_stream_not_started(&self, stream_id: u64) -> bool {
+        let stream = self.get_stream(stream_id);
+        let current_time = self.blockchain().get_block_timestamp();
+        let is_not_started = current_time < stream.start_time;
+        return is_not_started;
     }
 
     #[endpoint(claimFromStream)]
@@ -164,12 +188,13 @@ pub trait CoinDrip:
         require!(balance_of >= amount, ERR_CLAIM_TOO_BIG);
 
         let current_time = self.blockchain().get_block_timestamp();
-        let is_finalized = current_time >= stream.end_time;
+        let is_finalized = self.is_stream_finalized(stream_id);
 
         if is_finalized {
             self.remove_stream(stream_id);
         } else {
             stream.last_claim = current_time;
+            stream.remaining_balance -= amount.clone();
             self.stream_by_id(stream_id).set(&stream);
         }
 
