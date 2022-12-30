@@ -17,11 +17,9 @@ use errors::{
     ERR_END_TIME,
     ERR_ONLY_RECIPIENT_CLAIM,
     ERR_ZERO_CLAIM,
-    ERR_CLAIM_TOO_BIG,
     ERR_CANT_CANCEL,
     ERR_CANCEL_ONLY_OWNERS,
-    ERR_INVALID_STREAM,
-    ERR_NO_STREAM
+    ERR_INVALID_STREAM
 };
 #[elrond_wasm::contract]
 pub trait CoinDrip:
@@ -98,19 +96,6 @@ pub trait CoinDrip:
         stream.end_time - stream.last_claim
     }
 
-    fn delta_of_sender(&self, stream_id: u64) -> u64 {
-        let stream = self.get_stream(stream_id);
-        let current_time = self.blockchain().get_block_timestamp();
-        if current_time <= stream.start_time {
-            return stream.end_time - stream.start_time;
-        }
-        if current_time < stream.end_time {
-            return stream.end_time - current_time;
-        }
-
-        0
-    }
-
     fn recipient_balance(&self, stream_id: u64) -> BigUint {
         let stream = self.get_stream(stream_id);
         let delta = self.delta_of_recipient(stream_id);
@@ -122,11 +107,8 @@ pub trait CoinDrip:
 
     fn sender_balance(&self, stream_id: u64) -> BigUint {
         let stream = self.get_stream(stream_id);
-        let delta = self.delta_of_sender(stream_id);
 
-        let recipient_balance = stream.rate_per_second.mul(delta);
-
-        recipient_balance
+        stream.deposit - self.recipient_balance(stream_id)
     }
 
     #[view(getBalanceOf)]
@@ -144,12 +126,8 @@ pub trait CoinDrip:
         }
 
         if address == stream.sender {
-            if self.is_stream_not_started(stream_id) {
-                return stream.deposit;
-            } else {
-                let sender_balance = self.sender_balance(stream_id);
-                return sender_balance;
-            }
+            let sender_balance = self.sender_balance(stream_id);
+            return sender_balance;
         }
 
         BigUint::zero()
@@ -162,30 +140,19 @@ pub trait CoinDrip:
         return is_finalized;
     }
 
-    fn is_stream_not_started(&self, stream_id: u64) -> bool {
-        let stream = self.get_stream(stream_id);
-        let current_time = self.blockchain().get_block_timestamp();
-        let is_not_started = current_time < stream.start_time;
-        return is_not_started;
-    }
-
     #[endpoint(claimFromStream)]
     fn claim_from_stream(
         &self,
-        stream_id: u64,
-        _amount: OptionalValue<BigUint>
+        stream_id: u64
     ) {
         let mut stream = self.get_stream(stream_id);
 
         let caller = self.blockchain().get_caller();
         require!(caller == stream.recipient, ERR_ONLY_RECIPIENT_CLAIM);
 
-        let balance_of = self.balance_of(stream_id, caller.clone());
-        let amount = (_amount.into_option()).unwrap_or(balance_of.clone());
+        let amount = self.balance_of(stream_id, caller.clone());
 
         require!(amount > 0, ERR_ZERO_CLAIM);
-
-        require!(balance_of >= amount, ERR_CLAIM_TOO_BIG);
 
         let current_time = self.blockchain().get_block_timestamp();
         let is_finalized = self.is_stream_finalized(stream_id);

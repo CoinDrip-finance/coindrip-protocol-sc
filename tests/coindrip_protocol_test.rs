@@ -1,4 +1,4 @@
-use coindrip::{CoinDrip, storage::StorageModule, errors::{ERR_ZERO_DEPOSIT, ERR_STREAM_TO_SC, ERR_STREAM_TO_CALLER, ERR_START_TIME, ERR_END_TIME, ERR_ONLY_RECIPIENT_CLAIM, ERR_ZERO_CLAIM, ERR_CLAIM_TOO_BIG, ERR_INVALID_STREAM, ERR_CANCEL_ONLY_OWNERS, ERR_CANT_CANCEL}};
+use coindrip::{CoinDrip, storage::StorageModule, errors::{ERR_ZERO_DEPOSIT, ERR_STREAM_TO_SC, ERR_STREAM_TO_CALLER, ERR_START_TIME, ERR_END_TIME, ERR_ONLY_RECIPIENT_CLAIM, ERR_ZERO_CLAIM, ERR_INVALID_STREAM, ERR_CANCEL_ONLY_OWNERS, ERR_CANT_CANCEL}};
 use elrond_wasm::types::{BigUint};
 use elrond_wasm_debug::{rust_biguint, managed_address};
 use elrond_wasm::{
@@ -172,7 +172,7 @@ fn claim_from_stream_test() {
             c_wrapper,
             &rust_biguint!(0), 
             |sc| {
-                sc.claim_from_stream(1, OptionalValue::None);
+                sc.claim_from_stream(1);
             },
         )
         .assert_user_error(ERR_ONLY_RECIPIENT_CLAIM);
@@ -184,22 +184,10 @@ fn claim_from_stream_test() {
               c_wrapper,
               &rust_biguint!(0), 
               |sc| {
-                  sc.claim_from_stream(1, OptionalValue::None);
+                  sc.claim_from_stream(1);
               },
           )
           .assert_user_error(ERR_ZERO_CLAIM);
-
-          // Amount is bigger than streamed amount
-          b_wrapper
-          .execute_tx(
-              &first_user,
-              c_wrapper,
-              &rust_biguint!(0), 
-              |sc| {
-                  sc.claim_from_stream(1, OptionalValue::Some(BigUint::from(100u64)));
-              },
-          )
-          .assert_user_error(ERR_CLAIM_TOO_BIG);
 
           b_wrapper.set_block_timestamp(current_timestamp + 60 * 2);
 
@@ -210,7 +198,7 @@ fn claim_from_stream_test() {
               c_wrapper,
               &rust_biguint!(0), 
               |sc| {
-                  sc.claim_from_stream(1, OptionalValue::None);
+                  sc.claim_from_stream(1);
               },
           )
           .assert_ok();
@@ -226,7 +214,7 @@ fn claim_from_stream_test() {
               c_wrapper,
               &rust_biguint!(0), 
               |sc| {
-                  sc.claim_from_stream(1, OptionalValue::None);
+                  sc.claim_from_stream(1);
               },
           )
           .assert_ok();
@@ -240,7 +228,7 @@ fn claim_from_stream_test() {
             c_wrapper,
             &rust_biguint!(0), 
             |sc| {
-                sc.claim_from_stream(1, OptionalValue::None);
+                sc.claim_from_stream(1);
             },
         )
         .assert_user_error(ERR_INVALID_STREAM);
