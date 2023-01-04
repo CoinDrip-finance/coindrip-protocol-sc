@@ -108,15 +108,16 @@ pub trait CoinDrip:
     fn sender_balance(&self, stream_id: u64) -> BigUint {
         let stream = self.get_stream(stream_id);
 
-        stream.deposit - self.recipient_balance(stream_id)
+        stream.remaining_balance - self.recipient_balance(stream_id)
     }
 
     #[view(getBalanceOf)]
     fn balance_of(&self, stream_id: u64, address: ManagedAddress) -> BigUint {
         let stream = self.get_stream(stream_id);
+        let is_stream_finalized = self.is_stream_finalized(stream_id);
 
         if address == stream.recipient {
-            if self.is_stream_finalized(stream_id) {
+            if is_stream_finalized {
                 return stream.remaining_balance;
             } else {
                 let recipient_balance = self.recipient_balance(stream_id);
@@ -125,7 +126,7 @@ pub trait CoinDrip:
             
         }
 
-        if address == stream.sender {
+        if address == stream.sender && !is_stream_finalized {
             let sender_balance = self.sender_balance(stream_id);
             return sender_balance;
         }
