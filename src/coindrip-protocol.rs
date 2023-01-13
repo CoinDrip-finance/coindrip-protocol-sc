@@ -83,6 +83,16 @@ pub trait CoinDrip:
         self.create_stream_event(stream_id, &caller, &recipient, &token_identifier, token_nonce, &token_amount, start_time, end_time);
     }
 
+    /**
+     * The number of seconds that the recipient hasn't claimed yet
+     * |----|*******|--|
+     * S   L.C      C  E
+     * S = start time
+     * L.C = last claim time
+     * C = current time
+     * E = end time
+     * The zone marked with "****..." represents the delta
+     */
     fn delta_of_recipient(&self, stream_id: u64) -> u64 {
         let stream = self.get_stream(stream_id);
         let current_time = self.blockchain().get_block_timestamp();
@@ -96,6 +106,16 @@ pub trait CoinDrip:
         stream.end_time - stream.last_claim
     }
 
+    /**
+     * Calculates the recipient balance based on the recipient delta and the rate per second
+     * |----|*******|--|
+     * S   L.C      C  E
+     * S = start time
+     * L.C = last claim time
+     * C = current time
+     * E = end time
+     * The zone marked with "****..." represents the recipient balance
+     */
     fn recipient_balance(&self, stream_id: u64) -> BigUint {
         let stream = self.get_stream(stream_id);
         let delta = self.delta_of_recipient(stream_id);
@@ -105,12 +125,25 @@ pub trait CoinDrip:
         recipient_balance
     }
 
+    /**
+     * Calculates the sender balance based on the recipient balance and the remaining balance
+     * |----|-------|**|
+     * S   L.C      C  E
+     * S = start time
+     * L.C = last claim time
+     * C = current time
+     * E = end time
+     * The zone marked with "**" represents the sender balance
+     */
     fn sender_balance(&self, stream_id: u64) -> BigUint {
         let stream = self.get_stream(stream_id);
 
         stream.remaining_balance - self.recipient_balance(stream_id)
     }
 
+    /**
+     * This view is used to return the active balance of the sender/recipient of a stream based on the stream id and the address
+     */
     #[view(getBalanceOf)]
     fn balance_of(&self, stream_id: u64, address: ManagedAddress) -> BigUint {
         let stream = self.get_stream(stream_id);
@@ -141,6 +174,9 @@ pub trait CoinDrip:
         return is_finalized;
     }
 
+    /**
+     * This endpoint can be used by the recipient of the stream to claim the stream amount of tokens
+     */
     #[endpoint(claimFromStream)]
     fn claim_from_stream(
         &self,
@@ -171,6 +207,10 @@ pub trait CoinDrip:
         self.claim_from_stream_event(stream_id, &amount, is_finalized);
     }
 
+    /**
+     * This endpoint can be used the by sender or recipient of a stream to cancel the stream.
+     * !!! The stream needs to be cancelable (a property that is set when the stream is created by the sender)
+     */
     #[endpoint(cancelStream)]
     fn cancel_stream(
         &self,
