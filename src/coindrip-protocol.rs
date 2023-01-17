@@ -234,6 +234,7 @@ pub trait CoinDrip:
 
         if recipient_balance > 0 {
             self.send().direct(&stream.recipient, &stream.payment_token, stream.payment_nonce, &recipient_balance);
+            self.claim_from_stream_event(stream_id, &recipient_balance, false);
         }
 
         self.cancel_stream_event(stream_id, &caller);
