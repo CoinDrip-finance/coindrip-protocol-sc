@@ -9,3 +9,5 @@ output*
 *.pem
 *.interaction.json
 .DS_Store
+
+erdpy*.json
