@@ -9,9 +9,9 @@ Check out the [docs](https://docs.coindrip.finance) to get a high-level understa
 If you want to build the smart contract locally, make sure you have [mxpy](https://docs.multiversx.com/sdk-and-tools/sdk-py/installing-mxpy/) installed.
 
 ```
-git clone https://github.com/CoinDrip-finance/coindrip-protocol-sc
-cd coindrip-protocol-sc
-cargo build
+$ git clone https://github.com/CoinDrip-finance/coindrip-protocol-sc
+$ cd coindrip-protocol-sc
+$ cargo build
 ```
 
 If you just want to use the CoinDrip protocol to stream tokens, consider checking out our dApp.
