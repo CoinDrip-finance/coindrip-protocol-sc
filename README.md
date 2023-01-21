@@ -1,4 +1,5 @@
-#CoinDrip Protocol
+# CoinDrip Protocol
+
 This is the source code of the CoinDrip protocol. CoinDrip is the first token (ESDT) streaming protocol built on MultiversX. Instead of the regular token transfers, you can use CoinDrip to stream tokens each second toward a recipient.
 
 Check out the [docs](https://docs.coindrip.finance) to get a high-level understanding of how CoinDrip works and ways you can integrate it in your project.
