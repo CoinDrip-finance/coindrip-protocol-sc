@@ -1,7 +1,7 @@
 #![no_std]
 
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 pub mod storage;
 mod events;
@@ -23,7 +23,7 @@ use errors::{
     ERR_STREAM_IS_NOT_CANCELLED,
     ERR_ONLY_RECIPIENT_SENDER_CAN_CLAIM
 };
-#[elrond_wasm::contract]
+#[multiversx_sc::contract]
 pub trait CoinDrip:
     storage::StorageModule
     + events::EventsModule {
@@ -42,8 +42,9 @@ pub trait CoinDrip:
         end_time: u64,
         _can_cancel: OptionalValue<bool>
     ) {
+        let caller = self.blockchain().get_caller();
         require!(recipient != self.blockchain().get_sc_address(), ERR_STREAM_TO_SC);
-        require!(recipient != self.blockchain().get_caller(), ERR_STREAM_TO_CALLER);
+        require!(recipient != caller , ERR_STREAM_TO_CALLER);
 
         let (token_identifier, token_nonce, token_amount) = self.call_value().egld_or_single_esdt().into_tuple();
 
@@ -56,15 +57,19 @@ pub trait CoinDrip:
         let stream_id = self.last_stream_id().get() + 1;
         self.last_stream_id().set(&stream_id);
 
-        let caller = self.blockchain().get_caller();
         let can_cancel: bool = (&_can_cancel.into_option()).unwrap_or(true);
 
+        self.streams_list(&caller).insert(stream_id);
+        self.streams_list(&recipient).insert(stream_id);
+
+        self.create_stream_event(stream_id, &caller, &recipient, &token_identifier, token_nonce, &token_amount, start_time, end_time);
+        
         let stream = Stream {
-            sender: caller.clone(),
-            recipient: recipient.clone(),
-            payment_token: token_identifier.clone(),
+            sender: caller,
+            recipient,
+            payment_token: token_identifier,
             payment_nonce: token_nonce,
-            deposit: token_amount.clone(),
+            deposit: token_amount,
             claimed_amount: BigUint::zero(),
             can_cancel,
             start_time,
@@ -73,10 +78,7 @@ pub trait CoinDrip:
         };
         self.stream_by_id(stream_id).set(&stream);
 
-        self.streams_list(caller.clone()).insert(stream_id);
-        self.streams_list(recipient.clone()).insert(stream_id);
-
-        self.create_stream_event(stream_id, &caller, &recipient, &token_identifier, token_nonce, &token_amount, start_time, end_time);
+       
     }
 
     ///
@@ -97,7 +99,7 @@ pub trait CoinDrip:
             return BigUint::zero();
         }
 
-        let streamed_so_far = stream.deposit.clone() * (current_time - stream.start_time) / (stream.end_time - stream.start_time);
+        let streamed_so_far = &stream.deposit * (current_time - stream.start_time) / (stream.end_time - stream.start_time);
         let recipient_balance = streamed_so_far.min(stream.deposit) - (stream.claimed_amount);
 
         recipient_balance
@@ -147,7 +149,7 @@ pub trait CoinDrip:
         if is_finalized {
             self.remove_stream(stream_id);
         } else {
-            stream.claimed_amount += amount.clone();
+            stream.claimed_amount += &amount;
             self.stream_by_id(stream_id).set(&stream);
         }
 
@@ -224,8 +226,8 @@ pub trait CoinDrip:
         let stream = self.get_stream(stream_id);
 
         self.stream_by_id(stream_id).clear();
-        self.streams_list(stream.recipient).swap_remove(&stream_id);
-        self.streams_list(stream.sender).swap_remove(&stream_id);
+        self.streams_list(&stream.recipient).swap_remove(&stream_id);
+        self.streams_list(&stream.sender).swap_remove(&stream_id);
     }
 
     #[view(getStreamData)]
