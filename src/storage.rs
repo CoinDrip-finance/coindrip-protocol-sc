@@ -1,5 +1,5 @@
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi)]
 pub struct BalancesAfterCancel<M: ManagedTypeApi> {
@@ -7,7 +7,7 @@ pub struct BalancesAfterCancel<M: ManagedTypeApi> {
     pub recipient_balance: BigUint<M>
 }
 
-#[derive(TopEncode, TopDecode, NestedEncode, TypeAbi)]
+#[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct Stream<M: ManagedTypeApi> {
     pub sender: ManagedAddress<M>,
     pub recipient: ManagedAddress<M>,
@@ -21,14 +21,14 @@ pub struct Stream<M: ManagedTypeApi> {
     pub balances_after_cancel: Option<BalancesAfterCancel<M>>
 }
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait StorageModule {
     #[storage_mapper("streamById")]
     fn stream_by_id(&self, stream_id: u64) -> SingleValueMapper<Stream<Self::Api>>;
 
     #[view(getStreamListByAddress)]
     #[storage_mapper("streamsList")]
-    fn streams_list(&self, address: ManagedAddress) -> UnorderedSetMapper<u64>;
+    fn streams_list(&self, address: &ManagedAddress) -> UnorderedSetMapper<u64>;
 
     #[view(getLastStreamId)]
     #[storage_mapper("lastStreamId")]
