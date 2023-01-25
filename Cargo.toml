@@ -1,7 +1,7 @@
 [package]
 name = "coindrip"
-version = "0.1.2-alpha"
-authors = [ "you",]
+version = "1.0.0-beta"
+authors = [ "Razvan Statescu",]
 edition = "2018"
 publish = false
 
