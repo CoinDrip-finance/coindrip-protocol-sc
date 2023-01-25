@@ -11,7 +11,6 @@ use storage::{Stream, BalancesAfterCancel};
 use errors::{
     ERR_STREAM_TO_SC,
     ERR_STREAM_TO_CALLER,
-    ERR_STREAM_ONLY_FUNGIBLE,
     ERR_ZERO_DEPOSIT,
     ERR_START_TIME,
     ERR_END_TIME,
@@ -48,8 +47,6 @@ pub trait CoinDrip:
 
         let (token_identifier, token_nonce, token_amount) = self.call_value().egld_or_single_esdt().into_tuple();
 
-        require!(token_nonce == 0, ERR_STREAM_ONLY_FUNGIBLE);
-
         require!(token_amount > 0, ERR_ZERO_DEPOSIT);
 
         let current_time = self.blockchain().get_block_timestamp();
@@ -58,9 +55,6 @@ pub trait CoinDrip:
 
         let stream_id = self.last_stream_id().get() + 1;
         self.last_stream_id().set(&stream_id);
-
-        let duration = end_time - start_time;
-        let rate_per_second = token_amount.clone() / BigUint::from(duration);
 
         let caller = self.blockchain().get_caller();
         let can_cancel: bool = (&_can_cancel.into_option()).unwrap_or(true);
@@ -71,9 +65,7 @@ pub trait CoinDrip:
             payment_token: token_identifier.clone(),
             payment_nonce: token_nonce,
             deposit: token_amount.clone(),
-            remaining_balance: token_amount.clone(),
-            last_claim: start_time,
-            rate_per_second,
+            claimed_amount: BigUint::zero(),
             can_cancel,
             start_time,
             end_time,
@@ -87,81 +79,43 @@ pub trait CoinDrip:
         self.create_stream_event(stream_id, &caller, &recipient, &token_identifier, token_nonce, &token_amount, start_time, end_time);
     }
 
-    /// The number of seconds that the recipient hasn't claimed yet
-    /// |----|*******|--|
-    /// S   L.C      C  E
-    /// S = start time
-    /// L.C = last claim time
-    /// C = current time
-    /// E = end time
-    /// The zone marked with "****..." represents the delta
-    fn delta_of_recipient(&self, stream_id: u64) -> u64 {
-        let stream = self.get_stream(stream_id);
-        let current_time = self.blockchain().get_block_timestamp();
-        if current_time <= stream.last_claim {
-            return 0;
-        }
-        if current_time < stream.end_time {
-            return current_time - stream.last_claim;
-        }
-
-        stream.end_time - stream.last_claim
-    }
-
     ///
-    /// Calculates the recipient balance based on the recipient delta and the rate per second
-    /// |----|*******|--|
-    /// S   L.C      C  E
+    /// Calculates the recipient balance based on the amount stream so far and the already claimed amount
+    /// |xxxx|*******|--|
+    /// S            C  E
     /// S = start time
-    /// L.C = last claim time
+    /// xxxx = already claimed amount
     /// C = current time
     /// E = end time
     /// The zone marked with "****..." represents the recipient balance
+    #[view(recipientBalance)]
     fn recipient_balance(&self, stream_id: u64) -> BigUint {
         let stream = self.get_stream(stream_id);
-        let delta = self.delta_of_recipient(stream_id);
+        let current_time = self.blockchain().get_block_timestamp();
 
-        let recipient_balance = stream.rate_per_second.mul(delta);
+        if current_time < stream.start_time {
+            return BigUint::zero();
+        }
+
+        let streamed_so_far = stream.deposit.clone() * (current_time - stream.start_time) / (stream.end_time - stream.start_time);
+        let recipient_balance = streamed_so_far.min(stream.deposit) - (stream.claimed_amount);
 
         recipient_balance
     }
 
-    /// Calculates the sender balance based on the recipient balance and the remaining balance
+    /// Calculates the sender balance based on the recipient balance and the claimed balance
     /// |----|-------|**|
     /// S   L.C      C  E
     /// S = start time
-    /// L.C = last claim time
+    /// L.C = last claimed amount
     /// C = current time
     /// E = end time
     /// The zone marked with "**" represents the sender balance
+    #[view(senderBalance)]
     fn sender_balance(&self, stream_id: u64) -> BigUint {
         let stream = self.get_stream(stream_id);
 
-        stream.remaining_balance - self.recipient_balance(stream_id)
-    }
-
-    /// This view is used to return the active balance of the sender/recipient of a stream based on the stream id and the address
-    #[view(getBalanceOf)]
-    fn balance_of(&self, stream_id: u64, address: ManagedAddress) -> BigUint {
-        let stream = self.get_stream(stream_id);
-        let is_stream_finalized = self.is_stream_finalized(stream_id);
-
-        if address == stream.recipient {
-            if is_stream_finalized {
-                return stream.remaining_balance;
-            } else {
-                let recipient_balance = self.recipient_balance(stream_id);
-                return recipient_balance;
-            }
-            
-        }
-
-        if address == stream.sender && !is_stream_finalized {
-            let sender_balance = self.sender_balance(stream_id);
-            return sender_balance;
-        }
-
-        BigUint::zero()
+        stream.deposit - self.recipient_balance(stream_id) - stream.claimed_amount
     }
 
     fn is_stream_finalized(&self, stream_id: u64) -> bool {
@@ -184,18 +138,16 @@ pub trait CoinDrip:
         let caller = self.blockchain().get_caller();
         require!(caller == stream.recipient, ERR_ONLY_RECIPIENT_CLAIM);
 
-        let amount = self.balance_of(stream_id, caller.clone());
+        let amount = self.recipient_balance(stream_id);
 
         require!(amount > 0, ERR_ZERO_CLAIM);
 
-        let current_time = self.blockchain().get_block_timestamp();
         let is_finalized = self.is_stream_finalized(stream_id);
 
         if is_finalized {
             self.remove_stream(stream_id);
         } else {
-            stream.last_claim = current_time;
-            stream.remaining_balance -= amount.clone();
+            stream.claimed_amount += amount.clone();
             self.stream_by_id(stream_id).set(&stream);
         }
 
@@ -221,8 +173,8 @@ pub trait CoinDrip:
         let caller = self.blockchain().get_caller();
         require!(caller == stream.recipient || caller == stream.sender, ERR_CANCEL_ONLY_OWNERS);
 
-        let sender_balance = self.balance_of(stream_id, stream.sender.clone());
-        let recipient_balance = self.balance_of(stream_id, stream.recipient.clone());
+        let sender_balance = self.sender_balance(stream_id);
+        let recipient_balance = self.recipient_balance(stream_id);
 
         stream.balances_after_cancel = Some(BalancesAfterCancel {
             sender_balance,

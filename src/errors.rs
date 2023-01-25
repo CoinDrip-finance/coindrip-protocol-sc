@@ -1,16 +1,13 @@
 pub const ERR_STREAM_TO_SC: &str = "stream to the current smart contract";
 pub const ERR_STREAM_TO_CALLER: &str = "stream to the caller";
-pub const ERR_STREAM_ONLY_FUNGIBLE: &str = "you can only stream fungible tokens";
 pub const ERR_ZERO_DEPOSIT: &str = "deposit is zero";
 pub const ERR_START_TIME: &str = "start time before current time";
 pub const ERR_END_TIME: &str = "end time before the start time";
 pub const ERR_ONLY_RECIPIENT_CLAIM: &str = "only recipient can claim";
 pub const ERR_ZERO_CLAIM: &str = "amount is zero";
-pub const ERR_CLAIM_TOO_BIG: &str = "amount exceeds the available balance";
 pub const ERR_CANT_CANCEL: &str = "this stream can't be canceled";
 pub const ERR_CANCEL_ONLY_OWNERS: &str = "Only recipient or sender can cancel stream";
 pub const ERR_INVALID_STREAM: &str = "Stream does not exist";
-pub const ERR_NO_STREAM: &str = "Address have no streams";
 pub const ERR_STREAM_IS_CANCELLED: &str = "This stream is cancelled";
 pub const ERR_STREAM_IS_NOT_CANCELLED: &str = "This stream not is cancelled";
 pub const ERR_ONLY_RECIPIENT_SENDER_CAN_CLAIM: &str = "Only recipient or sender can claim";
