@@ -11,3 +11,6 @@ pub const ERR_CANT_CANCEL: &str = "this stream can't be canceled";
 pub const ERR_CANCEL_ONLY_OWNERS: &str = "Only recipient or sender can cancel stream";
 pub const ERR_INVALID_STREAM: &str = "Stream does not exist";
 pub const ERR_NO_STREAM: &str = "Address have no streams";
+pub const ERR_STREAM_IS_CANCELLED: &str = "This stream is cancelled";
+pub const ERR_STREAM_IS_NOT_CANCELLED: &str = "This stream not is cancelled";
+pub const ERR_ONLY_RECIPIENT_SENDER_CAN_CLAIM: &str = "Only recipient or sender can claim";

@@ -1,6 +1,12 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
+#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi)]
+pub struct BalancesAfterCancel<M: ManagedTypeApi> {
+    pub sender_balance: BigUint<M>,
+    pub recipient_balance: BigUint<M>
+}
+
 #[derive(TopEncode, TopDecode, NestedEncode, TypeAbi)]
 pub struct Stream<M: ManagedTypeApi> {
     pub sender: ManagedAddress<M>,
@@ -13,7 +19,8 @@ pub struct Stream<M: ManagedTypeApi> {
     pub rate_per_second: BigUint<M>,
     pub can_cancel: bool,
     pub start_time: u64,
-    pub end_time: u64
+    pub end_time: u64,
+    pub balances_after_cancel: Option<BalancesAfterCancel<M>>
 }
 
 #[elrond_wasm::module]

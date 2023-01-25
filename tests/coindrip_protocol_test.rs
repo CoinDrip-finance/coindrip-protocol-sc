@@ -281,7 +281,7 @@ fn cancel_stream_test() {
             c_wrapper,
             &rust_biguint!(0), 
             |sc| {
-                sc.cancel_stream(1)
+                sc.cancel_stream(1, OptionalValue::None)
             },
         )
         .assert_user_error(ERR_CANCEL_ONLY_OWNERS);
@@ -295,7 +295,7 @@ fn cancel_stream_test() {
             c_wrapper,
             &rust_biguint!(0), 
             |sc| {
-                sc.cancel_stream(1)
+                sc.cancel_stream(1, OptionalValue::None)
             },
         )
         .assert_ok();
@@ -324,7 +324,7 @@ fn cancel_stream_test() {
             c_wrapper,
             &rust_biguint!(0), 
             |sc| {
-                sc.cancel_stream(2)
+                sc.cancel_stream(2, OptionalValue::None)
             },
         )
         .assert_user_error(ERR_CANT_CANCEL);
