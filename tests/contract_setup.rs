@@ -1,5 +1,5 @@
-use multiversx_sc::types::{Address};
-use multiversx_sc_scenario::{rust_biguint, testing_framework::*, DebugApi};
+use elrond_wasm::types::{Address};
+use elrond_wasm_debug::{rust_biguint, testing_framework::*, DebugApi};
 use coindrip::*;
 
 const WASM_PATH: &'static str = "output/coindrip.wasm";
@@ -29,7 +29,6 @@ where
     // Create a wallet for SC and assign 5M tokens
     let owner_address = blockchain_wrapper.create_user_account(&rust_zero);
     blockchain_wrapper.set_esdt_balance(&owner_address, TOKEN_ID, &rust_biguint!(5_000_000));
-    blockchain_wrapper.set_egld_balance(&owner_address, &rust_biguint!(101));
 
     // Create 3 dummy wallets to interact with the protocol
     let first_user_address = blockchain_wrapper.create_user_account(&rust_zero);

@@ -77,6 +77,8 @@ pub trait CoinDrip:
             balances_after_cancel: None
         };
         self.stream_by_id(stream_id).set(&stream);
+
+       
     }
 
     ///
