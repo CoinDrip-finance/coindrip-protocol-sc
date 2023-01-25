@@ -391,3 +391,104 @@ fn streamed_so_far_test() {
         )
         .assert_ok();
 }
+
+#[test]
+fn claim_from_stream_rounding_test() {
+    let mut setup = setup_contract(coindrip::contract_obj);
+    let b_wrapper = &mut setup.blockchain_wrapper;
+    let current_timestamp = get_current_timestamp();
+    b_wrapper.set_block_timestamp(current_timestamp);
+    let c_wrapper = &mut setup.contract_wrapper;
+    let first_user = setup.third_user_address;
+    let owner_address  = setup.owner_address;
+    
+
+    // Create a valid stream of 3K tokens
+    b_wrapper
+        .execute_esdt_transfer(
+            &owner_address,
+            c_wrapper,
+            TOKEN_ID,
+            0, 
+            &rust_biguint!(2),
+            |sc| {
+                let current_timestamp = get_current_timestamp();
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 31, OptionalValue::None);
+            },
+        ).assert_ok();
+
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 5);
+
+        // Claim 0 tokens
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream(1);
+            },
+        )
+        .assert_user_error(ERR_ZERO_CLAIM);
+
+        b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(0));
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 26);
+
+        // Claim 1 token
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream(1);
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(1));
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 31);
+
+        // Claim 1 token
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream(1);
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(2));
+
+        // Stream is deleted
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream(1);
+            },
+        )
+        .assert_user_error(ERR_INVALID_STREAM);
+
+        // Check storage updates
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                let user_deposit = sc.streams_list(managed_address!(&first_user));
+                let expected_deposit = user_deposit.len();
+                assert_eq!(expected_deposit, 0);
+            },
+        )
+        .assert_ok()
+}
