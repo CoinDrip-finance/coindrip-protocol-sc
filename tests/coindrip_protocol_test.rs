@@ -298,7 +298,7 @@ fn cancel_stream_test() {
         .assert_ok();
 
         b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(1500));
-        b_wrapper.check_esdt_balance(&owner_address, TOKEN_ID, &(owner_balance - rust_biguint!(1500)));
+        b_wrapper.check_esdt_balance(&owner_address, TOKEN_ID, &(owner_balance - rust_biguint!(3000)));
 
         b_wrapper.set_block_timestamp(current_timestamp);
 
@@ -399,8 +399,6 @@ fn claim_from_stream_rounding_test() {
     let first_user = setup.third_user_address;
     let owner_address  = setup.owner_address;
     
-
-    // Create a valid stream of 3K tokens
     b_wrapper
         .execute_esdt_transfer(
             &owner_address,
@@ -447,7 +445,7 @@ fn claim_from_stream_rounding_test() {
 
         b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(1));
 
-        b_wrapper.set_block_timestamp(current_timestamp + 60 * 31);
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 31 + 60);
 
         // Claim 1 token
         b_wrapper

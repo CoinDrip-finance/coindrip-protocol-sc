@@ -199,25 +199,32 @@ pub trait CoinDrip:
         &self,
         stream_id: u64
     ) {
-        let stream = self.get_stream(stream_id);
+        let mut stream = self.get_stream(stream_id);
 
         require!(stream.balances_after_cancel.is_some(), ERR_STREAM_IS_NOT_CANCELLED);
 
         let caller = self.blockchain().get_caller();
         require!(caller == stream.recipient || caller == stream.sender, ERR_ONLY_RECIPIENT_SENDER_CAN_CLAIM);
 
-        let balances_after_cancel = stream.balances_after_cancel.unwrap();
+        let mut balances_after_cancel = stream.balances_after_cancel.unwrap();
         
-        if balances_after_cancel.recipient_balance > 0 {
+        if caller == stream.recipient && balances_after_cancel.recipient_balance > 0 {
             self.send().direct(&stream.recipient, &stream.payment_token, stream.payment_nonce, &balances_after_cancel.recipient_balance);
             self.claim_from_stream_event(stream_id, &balances_after_cancel.recipient_balance, false);
+            balances_after_cancel.recipient_balance = BigUint::zero();
         }
 
-        if balances_after_cancel.sender_balance > 0{
+        if caller == stream.sender && balances_after_cancel.sender_balance > 0{
             self.send().direct(&stream.sender, &stream.payment_token, stream.payment_nonce, &balances_after_cancel.sender_balance);
+            balances_after_cancel.sender_balance = BigUint::zero();
         }
 
-        self.remove_stream(stream_id);
+        if balances_after_cancel.recipient_balance == 0 && balances_after_cancel.sender_balance == 0 {
+            self.remove_stream(stream_id);
+        } else {
+            stream.balances_after_cancel = Some(balances_after_cancel);
+            self.stream_by_id(stream_id).set(stream);
+        }
     }
 
     fn remove_stream(&self, stream_id: u64) {
