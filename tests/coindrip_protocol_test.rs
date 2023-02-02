@@ -1,4 +1,4 @@
-use coindrip::{CoinDrip, storage::StorageModule, errors::{ERR_ZERO_DEPOSIT, ERR_STREAM_TO_SC, ERR_STREAM_TO_CALLER, ERR_START_TIME, ERR_END_TIME, ERR_ONLY_RECIPIENT_CLAIM, ERR_ZERO_CLAIM, ERR_INVALID_STREAM, ERR_CANCEL_ONLY_OWNERS, ERR_CANT_CANCEL}};
+use coindrip::{CoinDrip, storage::StorageModule, errors::{ERR_ZERO_DEPOSIT, ERR_STREAM_IS_NOT_CANCELLED, ERR_ONLY_RECIPIENT_SENDER_CAN_CLAIM, ERR_STREAM_TO_SC, ERR_STREAM_TO_CALLER, ERR_START_TIME, ERR_END_TIME, ERR_ONLY_RECIPIENT_CLAIM, ERR_ZERO_CLAIM, ERR_INVALID_STREAM, ERR_CANCEL_ONLY_OWNERS, ERR_CANT_CANCEL}};
 use multiversx_sc::{types::{BigUint}, codec::multi_types::OptionalValue};
 use multiversx_sc_scenario::{rust_biguint, managed_address};
 
@@ -325,6 +325,102 @@ fn cancel_stream_test() {
             },
         )
         .assert_user_error(ERR_CANT_CANCEL);
+}
+
+#[test]
+fn claim_from_stream_after_cancel_test() {
+    let mut setup = setup_contract(coindrip::contract_obj);
+    let b_wrapper = &mut setup.blockchain_wrapper;
+    let current_timestamp = get_current_timestamp();
+    b_wrapper.set_block_timestamp(current_timestamp);
+    let c_wrapper = &mut setup.contract_wrapper;
+    let first_user = setup.first_user_address;
+    let second_user = setup.second_user_address;
+    let owner_address  = setup.owner_address;
+    let owner_balance = b_wrapper.get_esdt_balance(&owner_address, TOKEN_ID, 0);
+
+    // Create a valid stream of 3K tokens
+    b_wrapper
+        .execute_esdt_transfer(
+            &owner_address,
+            c_wrapper,
+            TOKEN_ID,
+            0, 
+            &rust_biguint!(3_000),
+            |sc| {
+                let current_timestamp = get_current_timestamp();
+                 sc.create_stream(managed_address!(&first_user), current_timestamp + 60, current_timestamp + 60 * 3, OptionalValue::None);
+            },
+        ).assert_ok();
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 2);
+
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream_after_cancel(1)
+            },
+        )
+        .assert_user_error(ERR_STREAM_IS_NOT_CANCELLED);
+
+        // Cancel stream in the middle
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.cancel_stream(1, OptionalValue::Some(false))
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(0));
+        b_wrapper.check_esdt_balance(&owner_address, TOKEN_ID, &(owner_balance.clone() - rust_biguint!(3000)));
+
+        b_wrapper.set_block_timestamp(current_timestamp + 60 * 6);
+
+        b_wrapper
+        .execute_tx(
+            &second_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream_after_cancel(1)
+            },
+        )
+        .assert_user_error(ERR_ONLY_RECIPIENT_SENDER_CAN_CLAIM);
+
+        b_wrapper
+        .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream_after_cancel(1)
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(1500));
+        b_wrapper.check_esdt_balance(&owner_address, TOKEN_ID, &(owner_balance.clone() - rust_biguint!(3000)));
+
+        b_wrapper
+        .execute_tx(
+            &owner_address,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream_after_cancel(1)
+            },
+        )
+        .assert_ok();
+
+        b_wrapper.check_esdt_balance(&first_user, TOKEN_ID, &rust_biguint!(1500));
+        b_wrapper.check_esdt_balance(&owner_address, TOKEN_ID, &(owner_balance.clone() - rust_biguint!(1500)));
 }
 
 #[test]
