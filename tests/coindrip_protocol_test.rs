@@ -410,6 +410,17 @@ fn claim_from_stream_after_cancel_test() {
 
         b_wrapper
         .execute_tx(
+            &first_user,
+            c_wrapper,
+            &rust_biguint!(0), 
+            |sc| {
+                sc.claim_from_stream_after_cancel(1)
+            },
+        )
+        .assert_user_error(ERR_ZERO_CLAIM);
+
+        b_wrapper
+        .execute_tx(
             &owner_address,
             c_wrapper,
             &rust_biguint!(0), 

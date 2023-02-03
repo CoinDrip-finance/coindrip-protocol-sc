@@ -208,13 +208,15 @@ pub trait CoinDrip:
 
         let mut balances_after_cancel = stream.balances_after_cancel.unwrap();
         
-        if caller == stream.recipient && balances_after_cancel.recipient_balance > 0 {
+        if caller == stream.recipient {
+            require!(balances_after_cancel.recipient_balance > 0, ERR_ZERO_CLAIM);
             self.send().direct(&stream.recipient, &stream.payment_token, stream.payment_nonce, &balances_after_cancel.recipient_balance);
             self.claim_from_stream_event(stream_id, &balances_after_cancel.recipient_balance, false);
             balances_after_cancel.recipient_balance = BigUint::zero();
         }
 
-        if caller == stream.sender && balances_after_cancel.sender_balance > 0{
+        if caller == stream.sender{
+            require!(balances_after_cancel.sender_balance > 0, ERR_ZERO_CLAIM);
             self.send().direct(&stream.sender, &stream.payment_token, stream.payment_nonce, &balances_after_cancel.sender_balance);
             balances_after_cancel.sender_balance = BigUint::zero();
         }
