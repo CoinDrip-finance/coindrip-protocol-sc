@@ -176,6 +176,8 @@ pub trait CoinDrip:
         let sender_balance = self.sender_balance(stream_id);
         let recipient_balance = self.recipient_balance(stream_id);
 
+        let streamed_until_cancel = recipient_balance.clone() + stream.claimed_amount.clone();
+
         stream.balances_after_cancel = Some(BalancesAfterCancel {
             sender_balance,
             recipient_balance
@@ -188,7 +190,7 @@ pub trait CoinDrip:
             self.claim_from_stream_after_cancel(stream_id);
         }
 
-        self.cancel_stream_event(stream_id, &caller);
+        self.cancel_stream_event(stream_id, &caller, &streamed_until_cancel);
     }
 
     /// After a stream was cancelled, you can call this endpoint to claim the streamed tokens as a recipient or the remaining tokens as a sender

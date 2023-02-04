@@ -29,5 +29,6 @@ pub trait EventsModule {
         &self,
         #[indexed] stream_id: u64,
         #[indexed] canceled_by: &ManagedAddress,
+        #[indexed] claimed_amount: &BigUint,
     );
 }  
