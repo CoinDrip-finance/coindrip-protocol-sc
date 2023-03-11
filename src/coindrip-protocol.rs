@@ -41,7 +41,7 @@ pub trait CoinDrip:
         start_time: u64,
         end_time: u64,
         _can_cancel: OptionalValue<bool>
-    ) {
+    ) -> u64 {
         let caller = self.blockchain().get_caller();
         require!(recipient != self.blockchain().get_sc_address(), ERR_STREAM_TO_SC);
         require!(recipient != caller , ERR_STREAM_TO_CALLER);
@@ -77,6 +77,8 @@ pub trait CoinDrip:
             balances_after_cancel: None
         };
         self.stream_by_id(stream_id).set(&stream);
+
+        stream_id
     }
 
     ///
